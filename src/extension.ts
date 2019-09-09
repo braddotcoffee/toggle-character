@@ -1,27 +1,44 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
+async function promptForInput() {
+	const input = await vscode.window.showInputBox();
+	if(!input) { return; }
+	vscode.commands.executeCommand('toggleCharacter.toggle', input);
+}
+
+function toggleOffCharacter(editor: vscode.TextEditor, currentLine: vscode.TextLine) {
+	editor.edit((editBuilder: vscode.TextEditorEdit) => {
+		const endPosition = currentLine.range.end;
+		const endColumn = endPosition.character;
+		const newEnd = new vscode.Position(currentLine.lineNumber, endColumn - 1);
+		editBuilder.delete(new vscode.Range(newEnd, currentLine.range.end));
+	});
+}
+
+function toggleOnCharacter(editor: vscode.TextEditor, currentLine: vscode.TextLine, toggleChar: string) {
+	editor.edit((editBuilder: vscode.TextEditorEdit) => {
+		editBuilder.insert(currentLine.range.end, toggleChar);
+	});
+}
+
 export function activate(context: vscode.ExtensionContext) {
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "toggle-character" is now active!');
+	let disposable = vscode.commands.registerCommand('toggleCharacter.toggle', (toggleChar?: string) => {
+		const editor = vscode.window.activeTextEditor;
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('extension.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
+		if (!editor) { return; }
+		if (!toggleChar) { return promptForInput(); }
 
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World!');
+		const currentLine = editor.document.lineAt(editor.selection.active.line);
+		const currentLineText = currentLine.text;
+		const endCharacter = currentLineText[currentLineText.length - 1];
+
+		return endCharacter === toggleChar ? toggleOffCharacter(editor, currentLine)
+										   : toggleOnCharacter(editor, currentLine, toggleChar);
 	});
 
 	context.subscriptions.push(disposable);
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }
